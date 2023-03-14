@@ -1,5 +1,6 @@
-# NBA-stats-platform
-NBA statistics and visualisation platform with Python
+# NBA Stats Platform
+NBA statistics and visualisation platform with Python.
+Data provided by https://www.basketball-reference.com/.
 
 ### Code overview
 
