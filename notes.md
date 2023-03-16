@@ -11,3 +11,18 @@
     * async? where is the bottle kneck scrapping or adding to database
         * make a queue, where scrapped data is fed in asap at top, adding to database at bottom
             * python continue? yield from?
+
+
+### Further ideas
+
+* get short chart data
+* forget getting data myself and use https://pypi.org/project/nba-api/ or use both
+
+### New project ideas
+
+* AI model that takes camera footage and generates data from it
+    * auto shot chart for normal person to use
+    * auto score board
+    * player stats
+    * tool to adjust ai mistakes 
+    * this tool would support college teams to start using data
