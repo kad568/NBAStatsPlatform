@@ -32,9 +32,10 @@ def create_basketball_reference_database():
 
 def main():
 
-    create_basketball_reference_database()
-    for champ in  utils.database.search("champion_name"):
-        print(champ)
+    # create_basketball_reference_database()
+    with sqlite3.connect('basketball-reference.db') as connection:
+        for _ in  utils.database.search(connection, 'league_index', 'points_leader'):
+            print(_)
 
 
 if __name__ == "__main__":
