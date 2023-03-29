@@ -13,9 +13,15 @@
             * python continue? yield from?
 
 
-### Further ideas
+## To do
 
-* get short chart data
+* generalise current crapping method
+    * pull and store data in the same format as the website
+    * store date in tuples (text, link, stat)
+
+# Further ideas
+
+* get shot chart data
 * forget getting data myself and use https://pypi.org/project/nba-api/ or use both
 
 ### New project ideas

@@ -1,30 +1,41 @@
 import utils
 import scrapping_methods
+import sqlite3
+
 
     
 def create_basketball_reference_database():
 
-    league_index_items, league_index_data  = scrapping_methods.get_league_index()
+    basketball_reference_url = "https://www.basketball-reference.com/"
+    league_index_url = f'{basketball_reference_url}/leagues'    
 
-    sql_connection, database_cursor = utils.database.init()
+    headers = [
+    "season", 
+    "league", 
+    "champion",
+    "mvp", 
+    "roy", 
+    "points_leader",
+    "rebounds_leader",
+    "assists_leader", 
+    "win_share_leader"
+    ]
 
-    utils.database.create_table(database_cursor, "league_index", league_index_items)
-    utils.database.add_to_table(sql_connection, database_cursor, "league_index", league_index_data)
-    sql_connection.commit()
-    sql_connection.close()
+    with sqlite3.connect('basketball-reference.db') as connection:
+            cursor = connection.cursor()
 
-def search(header):
+            league_index_items, league_index_data  = scrapping_methods.get_table_data(league_index_url, headers)
 
-    sql_connection, database_cursor = utils.database.init()
-    res = sql_connection.execute(f"SELECT {header} FROM league_index")
-    for _ in res.fetchall():
-        print(_[0])
-    sql_connection.close()
+            utils.database.create_table(cursor, "league_index", league_index_items)
+            utils.database.add_to_table(connection, cursor, "league_index", league_index_data)
+
 
 def main():
 
     create_basketball_reference_database()
-    search("points")
+    for champ in  utils.database.search("champion_name"):
+        print(champ)
+
 
 if __name__ == "__main__":
     main()

@@ -5,16 +5,7 @@ import sqlite3
 
 class database:
 
-    database_name = "basketball_reference.db"
-
-    @staticmethod
-    def init(database_name: str = database_name):
-
-        sql_connection = sqlite3.connect(database_name)
-        database_cursor = sql_connection.cursor()
-
-        return sql_connection, database_cursor
-    
+    database_name = "basketball_reference.db"   
 
     @staticmethod
     def create_table(database_cursor, table_name:str, table_items: list):
@@ -34,7 +25,13 @@ class database:
         tmp_data_slots = ', '.join(["?"] * num_of_data_sets)
         database_cursor.executemany(f"INSERT INTO {tmp_table_name} VALUES({tmp_data_slots})", data)
         sql_connection.commit()
+    
+    @staticmethod
+    def search(sql_connection, table_name, search_header):
 
+        result = sql_connection.execute(f"SELECT {search_header} FROM {table_name}")
+
+        return result.fetchall()
 
 def get_relevant_tags(target_url: str, proxies: dict = None, tag_types: list = ["tr", ["th", "td"]]) -> list[list]:
 
