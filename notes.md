@@ -32,3 +32,19 @@
     * player stats
     * tool to adjust ai mistakes 
     * this tool would support college teams to start using data
+
+
+
+
+
+##################################################
+
+# To do list
+
+- [x] get all player index & add id (primary key)
+- [ ] get all player data and linked to an id
+
+
+### notes
+
+* find the basketball ref player id (player_id=morrima02)

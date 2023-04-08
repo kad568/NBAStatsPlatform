@@ -1,4 +1,7 @@
 import utils
+from requests import get
+from bs4 import BeautifulSoup as bs
+from time import sleep
 
 def clean_data(data, headers):
 
@@ -21,7 +24,23 @@ def clean_data(data, headers):
     return (cleaned_headers, cleaned_data)
 
 
-def get_table_data(url: str,headers: list, proxies: dict = None, text_splitter = '\xa0') -> list: 
+def get_league_index() -> tuple: 
+
+    basketball_reference_url = "https://www.basketball-reference.com"
+
+    url = f'{basketball_reference_url}/leagues'    
+
+    headers = [
+    "season", 
+    "league", 
+    "champion",
+    "mvp", 
+    "roy", 
+    "points_leader",
+    "rebounds_leader",
+    "assists_leader", 
+    "win_share_leader"
+    ]
 
     orig_headers = headers.copy()
     for index, header in enumerate(orig_headers):
@@ -46,8 +65,10 @@ def get_table_data(url: str,headers: list, proxies: dict = None, text_splitter =
             else:
                  link = ""
 
+            text_splitter = '\xa0'
             if text_splitter in text:
-                name, stat = utils.split_player_stat(text)
+                strings = text.split('\xa0')
+                name, stat = strings
                 text = ""
             else:
                 name = ""
@@ -64,16 +85,97 @@ def get_table_data(url: str,headers: list, proxies: dict = None, text_splitter =
 
     return (headers, data)
 
-def get_player(url: str,headers: list, proxies: dict = None) -> list:
+def get_player_index() -> tuple:
+
+    headers = [
+        "player_id",
+        "player_name",
+        "career_start",
+        "career_end",
+        "position",
+        "height",
+        "weight",
+        "DOB",
+        "college_1",
+        "college_2",
+        "college_3",
+        "college_4",
+        "college_5",
+        "college_6",
+        "college_7",
+        "college_8",
+        "college_9",
+        "college_10",
+    ]
+
+    basketball_reference_url = "https://www.basketball-reference.com" 
+    base_link = f'{basketball_reference_url}/players'  
 
     alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-                 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
-    
-    basketball_reference_url = "https://www.basketball-reference.com/" 
-    base_link = f'{basketball_reference_url}/players'   
+                 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'y', 'z']
+     
     player_links_by_letter = [f"{base_link}/{letter}/" for letter in alphabet]
 
-    
-    utils.get_relevant_tags(player_links_by_letter[0])
+    orig_headers = headers.copy()
+    for index, header in enumerate(orig_headers):
+         headers.insert(2 * index + 1, f"{header}_link")
 
-    return
+    data = []
+
+    for letter_inddex, link in enumerate(player_links_by_letter):
+
+        sleep(10)
+    
+        response = get(link, headers=utils.headers)
+        status_code = response.status_code
+        
+        assert status_code == 200, f"Connection failed with error code {status_code}."
+
+        soup = bs(response.content, 'lxml')
+        tags = [list(tag.find_all(["th", "td"]))\
+                        for tag in list(soup.find_all("tr"))[1:]]
+
+        for tag in tags:
+
+            data_set = []
+            
+            for index, header in enumerate(tag):
+
+                text = header.getText()
+
+                if index == 0:
+                    player_id = header.attrs["data-append-csv"]
+                    data_set.append(player_id)
+                    link = ""
+                    data_set.append(link)
+                
+                text = header.getText()
+
+                if header.find("a"):
+                    link = header.find("a").attrs["href"]
+                else:
+                    link = ""
+                
+                if index == 7:
+                    colleges = [tag.getText() for tag in header.find_all('a')]
+
+                    links = [tag.attrs["href"] for tag in list(header.find_all("a"))]
+
+                    for college_index in range(10):
+                        try:
+                            data_set.append(colleges[college_index])
+                            data_set.append(links[college_index])
+                        except IndexError:
+                            data_set.append("")
+                            data_set.append("")
+                else:
+                    data_set.append(text)
+                    data_set.append(link)
+        
+            data.append(data_set)
+        
+        print(f'DATA COLLECTED ({alphabet[letter_inddex]}) ')
+
+    headers, data = clean_data(data, headers)
+        
+    return (headers, data)

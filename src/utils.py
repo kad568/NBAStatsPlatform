@@ -3,6 +3,11 @@ from bs4 import BeautifulSoup as bs
 import sqlite3
 
 
+headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36'
+        }
+
+
 class database:
 
     database_name = "basketball_reference.db"   
@@ -12,11 +17,6 @@ class database:
 
         table_items_string = ", ".join(table_items)
         database_cursor.execute(f"CREATE TABLE {table_name}({table_items_string})")
-
-        result = database_cursor.execute("SELECT name FROM sqlite_master")
-        available_tables = result.fetchone()
-        assert table_name in available_tables, f"{table_name} table not created"
-
     
     @staticmethod
     def add_to_table(sql_connection, database_cursor, tmp_table_name: str, data: list):
@@ -35,7 +35,7 @@ class database:
 
 def get_relevant_tags(target_url: str, proxies: dict = None, tag_types: list = ["tr", ["th", "td"]]) -> list[list]:
 
-    response = get(target_url, proxies=proxies)
+    response = get(target_url, proxies=proxies, headers=headers)
     status_code = response.status_code
     
     assert status_code == 200, f"Connection failed with error code {status_code}."
@@ -45,11 +45,3 @@ def get_relevant_tags(target_url: str, proxies: dict = None, tag_types: list = [
                     for tag in list(soup.find_all(tag_types[0]))[2:]]
     
     return tags
-
-def split_player_stat(player_stat: str) -> str:
-
-    split_string = player_stat.split('\xa0')
-    name = " ".join(split_string[:1])
-    stat = split_string[1][1:-1]
-
-    return name, stat
