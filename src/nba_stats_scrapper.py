@@ -21,11 +21,8 @@ def create_basketball_reference_database():
 
 def main():
 
-    create_basketball_reference_database()
-    with sqlite3.connect('basketball-reference.db') as connection:
-        for _ in  utils.database.search(connection, 'player_index', 'player_name'):
-            print(_[0])
-
+    # create_basketball_reference_database()
+    scrapping_methods.get_player_data()    
 
 if __name__ == "__main__":
     main()

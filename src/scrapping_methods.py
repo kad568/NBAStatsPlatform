@@ -2,6 +2,7 @@ import utils
 from requests import get
 from bs4 import BeautifulSoup as bs
 from time import sleep
+import sqlite3
 
 def clean_data(data, headers):
 
@@ -179,3 +180,64 @@ def get_player_index() -> tuple:
     headers, data = clean_data(data, headers)
         
     return (headers, data)
+
+def get_player_data():
+
+    # shooting data
+
+    with sqlite3.connect('basketball-reference.db') as connection:
+        player_links = [f"https://www.basketball-reference.com{link[0]}" for link in utils.database.search(connection, 'player_index', 'player_name_link')]
+
+    for index, link in enumerate(player_links[3:4]):
+
+        sleep(3)
+
+        response = get(link, headers=utils.headers)
+        status_code = response.status_code
+        
+        assert status_code == 200, f"Connection failed with error code {status_code}."
+
+        soup = bs(response.content, 'lxml')
+        tags = soup.find_all('li', 'full hasmore')
+        data_categories = [tag.find('span').getText() for tag in tags]
+
+        indexed_data_categories = enumerate(data_categories)
+
+        for data_category in indexed_data_categories:
+            if data_category[1] == 'Shooting':
+                shooting_index = data_category[0]
+
+        shooting_years = []
+        try:
+
+            for a_tag in tags[shooting_index].find_all('a'):
+                data_set = []
+                shooting_data_year = a_tag.getText()
+                shooting_data_link = a_tag.attrs["href"]
+
+                data_set.append(shooting_data_year)
+                data_set.append(shooting_data_link)
+
+                shooting_years.append(data_set)
+
+            for year in shooting_years:
+
+                sleep(3)
+
+                name, url = year
+
+                full_url = f"https://www.basketball-reference.com{url}"
+
+                response = get(full_url, headers=utils.headers)
+                status_code = response.status_code
+                
+                assert status_code == 200, f"Connection failed with error code {status_code}."
+
+                soup = bs(response.content, 'lxml')
+                tags = soup.find_all('div', {'class': 'placeholder'})
+                shot_chart = [tag.find('div').getText() for tag in tags]
+
+                print(shot_chart[0])
+        
+        except:
+            pass
