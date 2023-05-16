@@ -3,6 +3,11 @@ from requests import get
 from bs4 import BeautifulSoup as bs
 from time import sleep
 import sqlite3
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+import pandas as pd
+
 
 def clean_data(data, headers):
 
@@ -190,6 +195,8 @@ def get_player_data():
 
     for index, link in enumerate(player_links[3:4]):
 
+        # load page in browser
+
         sleep(3)
 
         response = get(link, headers=utils.headers)
@@ -208,36 +215,74 @@ def get_player_data():
                 shooting_index = data_category[0]
 
         shooting_years = []
-        try:
 
-            for a_tag in tags[shooting_index].find_all('a'):
-                data_set = []
-                shooting_data_year = a_tag.getText()
-                shooting_data_link = a_tag.attrs["href"]
 
-                data_set.append(shooting_data_year)
-                data_set.append(shooting_data_link)
+        for a_tag in tags[shooting_index].find_all('a'):
+            data_set = []
+            shooting_data_year = a_tag.getText()
+            shooting_data_link = a_tag.attrs["href"]
 
-                shooting_years.append(data_set)
+            data_set.append(shooting_data_year)
+            data_set.append(shooting_data_link)
 
-            for year in shooting_years:
-
-                sleep(3)
-
-                name, url = year
-
-                full_url = f"https://www.basketball-reference.com{url}"
-
-                response = get(full_url, headers=utils.headers)
-                status_code = response.status_code
-                
-                assert status_code == 200, f"Connection failed with error code {status_code}."
-
-                soup = bs(response.content, 'lxml')
-                tags = soup.find_all('div', {'class': 'placeholder'})
-                shot_chart = [tag.find('div').getText() for tag in tags]
-
-                print(shot_chart[0])
+            shooting_years.append(data_set)
         
-        except:
-            pass
+        shot_chart = pd.DataFrame(columns=['season', 'link', 'shot_type','make_miss','x', 'y', 'date', 'team_against', 'time_left', 'distance', 'team_winning', 'score'])
+
+        for year in [shooting_years[0]]:
+
+            name, url = year
+
+            full_url = f"https://www.basketball-reference.com{url}"
+
+            options = webdriver.ChromeOptions()
+            options.add_argument("--headless=new")
+            driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=options)
+            driver.get(full_url)
+
+            soup = bs(driver.page_source, 'lxml')
+            driver.quit()
+            tags = soup.find('div', {'class': 'shot-area'})
+            shot_chart_tags = tags.find_all('div')
+
+            for shot in shot_chart_tags:
+
+                shot_position = str(shot.attrs["style"])
+                shot_position = shot_position.split('px;')
+                x = int(shot_position[0][4:])
+                y = int(shot_position[1][5:])
+
+                if shot.getText() == "●":
+                    make = 1
+                else:
+                    make = 0
+                
+                date_attr = shot.attrs["tip"]
+                items = date_attr.split("<br>")
+
+                date = items[0]
+
+                print(x, y, make)
+
+
+                shot_data = {
+                    'season': name,
+                    'link': url,
+                    'shot_type': ...,
+                    'make_miss': make,
+                    'x': x,
+                    'y': y,
+                    'date': ...,
+                    'team_against': ...,
+                    'time_left': ...,
+                    'distance': ...,
+                    'team_winning': ...,
+                    'score': ...
+                }
+                
+
+        # shot_chart = pd.DataFrame(columns=['year', 'link', 'shot_type','make_miss','x', 'y', 'date', 'team_against', 'time_left', 'distance', 'team_winning', 'score'])
+            # extraxt all data from each div
+            # pandas datafram with each
+
+
