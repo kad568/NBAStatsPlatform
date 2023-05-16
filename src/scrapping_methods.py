@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
+from datetime import datetime
 
 
 def clean_data(data, headers):
@@ -257,25 +258,50 @@ def get_player_data():
                 else:
                     make = 0
                 
-                date_attr = shot.attrs["tip"]
-                items = date_attr.split("<br>")
+                description_attr = shot.attrs["tip"]
+                items = description_attr.split("<br>")
 
-                date = items[0]
+                # Get the date
+                date = str(items[0])
+                year = date.split(", ")[1]
+                day_month = date.split(", ")[0]
+                month, day = day_month.split(" ")
+                date_str = f"{day}/{month}/{year}"
+                date = datetime.strptime(date_str, "%d/%b/%Y")
 
-                print(x, y, make)
+                # get the team against
+                teams_str = str(items[0]).split(", ")[2]
+                team_against = teams_str.split(" ")[2]
+
+                # get game time
+                quater = str(items[1][0])
+                time_left_str = str(items[1]).split(", ")[1]
+                time_left_str = time_left_str.split(" ")[0]
+                time_left = datetime.strptime(time_left_str, "%M:%S").time()
+
+                # get shot type
+                shot_type_str = str(items[2])
+                shot_points = shot_type_str.split(" ")[1][0]
+                distance = shot_type_str.split(" ")[3]
+                print(shot_points, distance)
 
 
                 shot_data = {
+                    'player': ...,
                     'season': name,
                     'link': url,
+                    'shot_points': shot_points,
                     'shot_type': ...,
                     'make_miss': make,
                     'x': x,
                     'y': y,
-                    'date': ...,
-                    'team_against': ...,
-                    'time_left': ...,
-                    'distance': ...,
+                    'date': date,
+                    'regular_playoff': ...,
+                    'home_away': ...,
+                    'team_against': team_against,
+                    'quater': quater,
+                    'time_left': time_left,
+                    'distance': distance,
                     'team_winning': ...,
                     'score': ...
                 }
