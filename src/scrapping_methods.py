@@ -194,11 +194,12 @@ def get_player_data():
     with sqlite3.connect('basketball-reference.db') as connection:
         player_links = [f"https://www.basketball-reference.com{link[0]}" for link in utils.database.search(connection, 'player_index', 'player_name_link')]
 
-    for index, link in enumerate(player_links[3:4]):
+    for index, link in enumerate(player_links[1075:1076]):
+        print(link)
 
         # load page in browser
 
-        sleep(3)
+        sleep(0)
 
         response = get(link, headers=utils.headers)
         status_code = response.status_code
@@ -230,7 +231,9 @@ def get_player_data():
         
         shot_chart = pd.DataFrame(columns=['season', 'link', 'shot_type','make_miss','x', 'y', 'date', 'team_against', 'time_left', 'distance', 'team_winning', 'score'])
 
-        for year in [shooting_years[0]]:
+        for year in [shooting_years[8]]:
+
+            sleep(0)
 
             name, url = year
 
@@ -272,22 +275,59 @@ def get_player_data():
                 # get the team against
                 teams_str = str(items[0]).split(", ")[2]
                 team_against = teams_str.split(" ")[2]
+                if "vs" in teams_str.split(" ")[1]:
+                    home_away = 1
+                else:
+                    home_away = 0
 
                 # get game time
                 quater = str(items[1][0])
+                game_time = str(items[1])
+                game_time_split = game_time.split(" ")
+                if "OT" in game_time_split[1]:
+                    quater = "OT"
+
                 time_left_str = str(items[1]).split(", ")[1]
                 time_left_str = time_left_str.split(" ")[0]
-                time_left = datetime.strptime(time_left_str, "%M:%S").time()
+                try:
+                    time_left = datetime.strptime(time_left_str, "%M:%S").time()
+                except:
+                    time_left = datetime.strptime(time_left_str, "%M:%S.%f").time()
+
 
                 # get shot type
                 shot_type_str = str(items[2])
                 shot_points = shot_type_str.split(" ")[1][0]
                 distance = shot_type_str.split(" ")[3]
-                print(shot_points, distance)
+
+                # get score informattion
+                score_info = str(items[3])
+
+                if "now" in score_info:
+                    lead_swing = True
+                else:
+                    lead_swing = False
+                
+                score_type = ""
+                if "trails" in score_info:
+                    score_type = -1
+                elif "leads" in score_info:
+                    score_type = 1
+                else:
+                    score_type = 0
+
+                score = score_info.split(" ")[-1]
+                
+                if int(distance) == 0:
+                    print(x,y) 
+
+
+                # must reload page for these values
+
+                # shot type
 
 
                 shot_data = {
-                    'player': ...,
                     'season': name,
                     'link': url,
                     'shot_points': shot_points,
@@ -297,14 +337,37 @@ def get_player_data():
                     'y': y,
                     'date': date,
                     'regular_playoff': ...,
-                    'home_away': ...,
+                    'home_away': home_away,
                     'team_against': team_against,
                     'quater': quater,
                     'time_left': time_left,
                     'distance': distance,
-                    'team_winning': ...,
-                    'score': ...
+                    'lead_swing': lead_swing,
+                    'team_winning': score_type,
+                    'score': score
                 }
+
+            shot_type_options = ["DUNK", "HOOK_SHOT", "JUMP_SHOT", "LAY-UP"]
+
+            shot_type_links = [f"&shot_type={_}" for _ in shot_type_options]
+
+            new_links = [f"{url}{_}" for _ in shot_type_links]
+
+
+            for new_link in new_links:
+
+                options = webdriver.ChromeOptions()
+                options.add_argument("--headless=new")
+                driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=options)
+                driver.get(new_link)
+
+                soup = bs(driver.page_source, 'lxml')
+                driver.quit()
+                tags = soup.find('div', {'class': 'shot-area'})
+                shot_chart_tags = tags.find_all('div')
+
+                # find_same_data_points
+                # if in orig df add 
                 
 
         # shot_chart = pd.DataFrame(columns=['year', 'link', 'shot_type','make_miss','x', 'y', 'date', 'team_against', 'time_left', 'distance', 'team_winning', 'score'])
