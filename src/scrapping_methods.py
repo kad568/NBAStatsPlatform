@@ -381,13 +381,43 @@ def get_player_data():
 
         print(f"finished {index}")
 
+    # make function to innit the table
+
     with sqlite3.connect('basketball-reference.db') as connection:
         cursor = connection.cursor()
         shot_chart.to_sql('shot_data', cursor, shot_chart, index=False,)
 
+def create_basketball_reference_db(name: str = "basketball-reference.db"):
 
+    # Connect to the database (this will create the database if it doesn't exist)
+    conn = sqlite3.connect('basketball-reference.db')
 
-# fix database entry
-# fix abernto01 
+    # Close the connection
+    conn.close()
 
+def create_league_index_db_table():
 
+    # Connect to the database
+    conn = sqlite3.connect('basketball-reference.db')
+
+    # Create a cursor object
+    cursor = conn.cursor()
+
+    # Execute the SQL command to create the table
+    cursor.execute('''
+        CREATE TABLE champions (
+        league_id INTEGER,
+        season TEXT, 
+        league TEXT, 
+        champion TEXT,
+        mvp TEXT, 
+        roy TEXT, 
+        points_leader TEXT,
+        rebounds_leader TEXT,
+        assists_leader TEXT, 
+        win_share_leader TEXT
+    ''')
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
