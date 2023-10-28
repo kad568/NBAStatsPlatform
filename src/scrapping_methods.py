@@ -1,11 +1,12 @@
 import utils
 from requests import get
 from bs4 import BeautifulSoup as bs
-from time import sleep
+from time import sleep, time
 import sqlite3
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import WebDriverException
 import pandas as pd
 from datetime import datetime
 
@@ -192,19 +193,45 @@ def get_player_data():
     # shooting data
 
     with sqlite3.connect('basketball-reference.db') as connection:
-        player_links = [f"https://www.basketball-reference.com{link[0]}" for link in utils.database.search(connection, 'player_index', 'player_name_link')]
+        player = utils.database.search(connection, 'player_index', 'player_name_link')
+        player_links = [[link[0], f"https://www.basketball-reference.com{link[0]}"] for link in player]
 
-    for index, link in enumerate(player_links[1075:1076]):
-        print(link)
+    no_of_requests = 0
+    timer_start_time = time()
+
+    def avoid_rate_limit(no_of_requests: int, timer_start_time: float):
+
+        current_time = time()
+        timer = timer_start_time - current_time
+        max_rate_time = 60
+        max_requests_per_min = 18
+
+        no_of_requests += 1
+
+        if no_of_requests >= max_requests_per_min:
+            if not max_rate_time - timer < 0:
+                sleep(max_rate_time - timer)
+
+            no_of_requests = 0
+            timer_start_time = time()
+        
+        return no_of_requests, timer_start_time
+
+    for link in player_links:
 
         # load page in browser
+        # [1075:1076]
+        index = link[0]
+        response = get(link[1], headers=utils.headers)
 
-        sleep(0)
+        no_of_requests, timer_start_time = avoid_rate_limit(no_of_requests, timer_start_time)
 
-        response = get(link, headers=utils.headers)
         status_code = response.status_code
         
-        assert status_code == 200, f"Connection failed with error code {status_code}."
+        if not status_code == 200:
+            break
+
+        # if not 200 break skip to next player / year
 
         soup = bs(response.content, 'lxml')
         tags = soup.find_all('li', 'full hasmore')
@@ -215,9 +242,10 @@ def get_player_data():
         for data_category in indexed_data_categories:
             if data_category[1] == 'Shooting':
                 shooting_index = data_category[0]
+        if not 'shooting_index' in locals():
+            continue
 
         shooting_years = []
-
 
         for a_tag in tags[shooting_index].find_all('a'):
             data_set = []
@@ -229,11 +257,9 @@ def get_player_data():
 
             shooting_years.append(data_set)
         
-        shot_chart = pd.DataFrame(columns=['season', 'link', 'shot_type','make_miss','x', 'y', 'date', 'team_against', 'time_left', 'distance', 'team_winning', 'score'])
+        shot_chart = pd.DataFrame(columns=['player', 'season', 'link', 'shot_points','shot_type', 'make_miss','x', 'y', 'date', 'regular_playoff', 'home_away','team_against', 'quater', 'time_left', 'distance', 'lead_swing', 'team_winning', 'score'])
 
-        for year in [shooting_years[8]]:
-
-            sleep(0)
+        for year in shooting_years:
 
             name, url = year
 
@@ -242,7 +268,13 @@ def get_player_data():
             options = webdriver.ChromeOptions()
             options.add_argument("--headless=new")
             driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=options)
-            driver.get(full_url)
+            print(full_url)
+            try:
+                driver.get(full_url)
+                no_of_requests, timer_start_time = avoid_rate_limit(no_of_requests, timer_start_time)
+            except WebDriverException:
+                no_of_requests, timer_start_time = avoid_rate_limit(no_of_requests, timer_start_time)
+                continue
 
             soup = bs(driver.page_source, 'lxml')
             driver.quit()
@@ -294,7 +326,6 @@ def get_player_data():
                 except:
                     time_left = datetime.strptime(time_left_str, "%M:%S.%f").time()
 
-
                 # get shot type
                 shot_type_str = str(items[2])
                 shot_points = shot_type_str.split(" ")[1][0]
@@ -317,10 +348,6 @@ def get_player_data():
                     score_type = 0
 
                 score = score_info.split(" ")[-1]
-                
-                if int(distance) == 0:
-                    print(x,y) 
-
 
                 # must reload page for these values
 
@@ -328,50 +355,39 @@ def get_player_data():
 
 
                 shot_data = {
-                    'season': name,
-                    'link': url,
-                    'shot_points': shot_points,
-                    'shot_type': ...,
-                    'make_miss': make,
-                    'x': x,
-                    'y': y,
-                    'date': date,
-                    'regular_playoff': ...,
-                    'home_away': home_away,
-                    'team_against': team_against,
-                    'quater': quater,
-                    'time_left': time_left,
-                    'distance': distance,
-                    'lead_swing': lead_swing,
-                    'team_winning': score_type,
-                    'score': score
+                    'player': [index],
+                    'season': [name],
+                    'link': [url],
+                    'shot_points': [shot_points],
+                    'shot_type': ['N/A'],
+                    'make_miss': [make],
+                    'x': [x],
+                    'y': [y],
+                    'date': [date],
+                    'regular_playoff': ['N/A'],
+                    'home_away': [home_away],
+                    'team_against': [team_against],
+                    'quater': [quater],
+                    'time_left': [time_left],
+                    'distance': [distance],
+                    'lead_swing': [lead_swing],
+                    'team_winning': [score_type],
+                    'score': [score]
                 }
 
-            shot_type_options = ["DUNK", "HOOK_SHOT", "JUMP_SHOT", "LAY-UP"]
+                shot_data = pd.DataFrame(shot_data, columns=['player', 'season', 'link', 'shot_points','shot_type', 'make_miss','x', 'y', 'date', 'regular_playoff', 'home_away','team_against', 'quater', 'time_left', 'distance', 'lead_swing', 'team_winning', 'score'],)
 
-            shot_type_links = [f"&shot_type={_}" for _ in shot_type_options]
+                shot_chart = pd.concat([shot_chart, shot_data], ignore_index = True)
 
-            new_links = [f"{url}{_}" for _ in shot_type_links]
+        print(f"finished {index}")
+
+    with sqlite3.connect('basketball-reference.db') as connection:
+        cursor = connection.cursor()
+        shot_chart.to_sql('shot_data', cursor, shot_chart, index=False,)
 
 
-            for new_link in new_links:
 
-                options = webdriver.ChromeOptions()
-                options.add_argument("--headless=new")
-                driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=options)
-                driver.get(new_link)
-
-                soup = bs(driver.page_source, 'lxml')
-                driver.quit()
-                tags = soup.find('div', {'class': 'shot-area'})
-                shot_chart_tags = tags.find_all('div')
-
-                # find_same_data_points
-                # if in orig df add 
-                
-
-        # shot_chart = pd.DataFrame(columns=['year', 'link', 'shot_type','make_miss','x', 'y', 'date', 'team_against', 'time_left', 'distance', 'team_winning', 'score'])
-            # extraxt all data from each div
-            # pandas datafram with each
+# fix database entry
+# fix abernto01 
 
 
